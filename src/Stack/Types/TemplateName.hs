@@ -40,14 +40,12 @@ instance FromJSON TemplateName where
     parseJSON = withText "TemplateName" $
         either fail return . parseTemplateNameFromString . T.unpack
 
-data TemplateInfo = TemplateInfo
-  { author      :: Maybe Text
-  , description :: Maybe Text }
+data TemplateInfo = TemplateInfo {author :: Maybe Text, description :: Maybe Text}
   deriving (Eq, Ord, Show)
 
 instance FromJSON TemplateInfo where
-  parseJSON (Object v) = TemplateInfo <$> v .:? "author" <*> v .:? "description"
-  parseJSON invalid = typeMismatch "Template Info" invalid
+    parseJSON (Object v) = TemplateInfo <$> v .:? "author" <*> v .:? "description"
+    parseJSON invalid = typeMismatch "Template Info" invalid
 
 -- | An argument which accepts a template name of the format
 -- @foo.hsfiles@ or @foo@, ultimately normalized to @foo@.

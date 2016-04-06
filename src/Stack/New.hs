@@ -276,16 +276,16 @@ listTemplates = do
     templates <- getTemplates
     templateInfo <- getTemplateInfo
     if not . M.null $ templateInfo then do
-      let keySizes  = map (T.length . templateName) $ S.toList templates
-          padWidth  = show $ maximum keySizes
-          outputfmt = "%-" <> padWidth <> "s %s\n"
-          headerfmt = "%-" <> padWidth <> "s   %s\n"
-      liftIO $ printf headerfmt ("Template"::String) ("Description"::String)
-      forM_ (S.toList templates) (\x -> do
-           let name = templateName x
-               desc = fromMaybe "" $ liftM (mappend "- ") (M.lookup name templateInfo >>= description)
-           liftIO $ printf outputfmt (T.unpack name) (T.unpack desc))
-      else mapM_ (liftIO . T.putStrLn . templateName) (S.toList templates)
+        let keySizes  = map (T.length . templateName) $ S.toList templates
+            padWidth  = show $ maximum keySizes
+            outputfmt = "%-" <> padWidth <> "s %s\n"
+            headerfmt = "%-" <> padWidth <> "s   %s\n"
+        liftIO $ printf headerfmt ("Template"::String) ("Description"::String)
+        forM_ (S.toList templates) (\x -> do
+            let name = templateName x
+                desc = fromMaybe "" $ liftM (mappend "- ") (M.lookup name templateInfo >>= description)
+            liftIO $ printf outputfmt (T.unpack name) (T.unpack desc))
+        else mapM_ (liftIO . T.putStrLn . templateName) (S.toList templates)
 
 -- | Get the set of templates.
 getTemplates
@@ -306,31 +306,31 @@ getTemplateInfo
     :: (MonadIO m, MonadThrow m, MonadReader r m, HasHttpManager r, MonadCatch m, MonadLogger m)
     => m (Map Text TemplateInfo)
 getTemplateInfo = do
-  req <- liftM addHeaders (parseUrl defaultTemplateInfoUrl)
-  resp <- catch (liftM Right $ httpLbs req) (\(ex :: HttpException) -> return . Left $ "Failed to download template info. The HTTP error was: " <> show ex)
-  case resp >>= is200 of
-    Left err -> do
-      liftIO . putStrLn $ err
-      return M.empty
-    Right resp' ->
-      case Yaml.decodeEither (LB.toStrict $ responseBody resp') :: Either String Object of
-        Left err ->
-          throwM $ BadTemplateInfo err
-        Right o ->
-          return (M.mapMaybe (Yaml.parseMaybe Yaml.parseJSON) (M.fromList . HM.toList $ o) :: Map Text TemplateInfo)
+    req <- liftM addHeaders (parseUrl defaultTemplateInfoUrl)
+    resp <- catch (liftM Right $ httpLbs req) (\(ex :: HttpException) -> return . Left $ "Failed to download template info. The HTTP error was: " <> show ex)
+    case resp >>= is200 of
+        Left err -> do
+            liftIO . putStrLn $ err
+            return M.empty
+        Right resp' ->
+            case Yaml.decodeEither (LB.toStrict $ responseBody resp') :: Either String Object of
+                Left err ->
+                    throwM $ BadTemplateInfo err
+                Right o ->
+                    return (M.mapMaybe (Yaml.parseMaybe Yaml.parseJSON) (M.fromList . HM.toList $ o) :: Map Text TemplateInfo)
   where
-    is200 resp =
-      if statusCode (responseStatus resp) == 200
-        then return resp
-        else Left $ "Unexpected status code while retrieving templates info: " <> show (statusCode $ responseStatus resp)
+      is200 resp =
+          if statusCode (responseStatus resp) == 200
+              then return resp
+              else Left $ "Unexpected status code while retrieving templates info: " <> show (statusCode $ responseStatus resp)
 
 addHeaders :: Request -> Request
 addHeaders req =
-  req
-    { requestHeaders = [ ("User-Agent", "The Haskell Stack")
-                       , ("Accept", "application/vnd.github.v3+json")] <>
-      requestHeaders req
-    }
+    req
+        { requestHeaders = [ ("User-Agent", "The Haskell Stack")
+                           , ("Accept", "application/vnd.github.v3+json")] <>
+          requestHeaders req
+        }
 
 -- | Parser the set of templates from the JSON.
 parseTemplateSet :: Value -> Parser (Set TemplateName)
