@@ -142,10 +142,11 @@ binaryUpgrade (BinaryOpts mplatform force' mver morg mrepo) = do
     isNewer <-
         case mdownloadVersion of
             Nothing -> do
-                $logError "Unable to determine upstream version from Github metadata"
+                let errorMsg = "Unable to determine upstream version from Github metadata"
+                $logError errorMsg
                 unless force $
                     $logError "Rerun with --force-download to force an upgrade"
-                return False
+                return $ Left errorMsg
             Just downloadVersion -> do
                 $logInfo $ T.concat
                     [ "Current Stack version: "
@@ -153,17 +154,23 @@ binaryUpgrade (BinaryOpts mplatform force' mver morg mrepo) = do
                     , ", available download version: "
                     , versionText downloadVersion
                     ]
-                return $ downloadVersion > stackVersion
+                return . Right $ compare stackVersion downloadVersion
 
     toUpgrade <- case (force, isNewer) of
-        (False, False) -> do
-            $logInfo "Skipping binary upgrade, your version is already more recent"
+        (_, Left _) -> do
+            $logInfo "Skipping binary upgrade."
             return False
-        (True, False) -> do
-            $logInfo "Forcing binary upgrade"
+        (False, Right EQ) -> do
+            $logInfo "Skipping binary upgrade, you already have the latest version."
+            return False
+        (False, Right GT) -> do
+            $logInfo "Skipping binary upgrade, you are past the latest released version."
+            return False
+        (True, Right _) -> do
+            $logInfo "Forcing binary upgrade."
             return True
-        (_, True) -> do
-            $logInfo "Newer version detected, downloading"
+        (_, Right LT) -> do
+            $logInfo "There is a new version available. Downloading."
             return True
     when toUpgrade $ do
         config <- view configL
